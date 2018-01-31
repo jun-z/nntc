@@ -31,6 +31,9 @@ parser.add_argument(
     '--batch_size', default=128, type=int, help='batch size')
 
 parser.add_argument(
+    '--print_every', default=100, type=int, help='print every n iterations')
+
+parser.add_argument(
     '--embedding_dim', default=300, type=int, help='embedding dimension')
 
 parser.add_argument(
@@ -38,6 +41,12 @@ parser.add_argument(
 
 parser.add_argument(
     '--disable_cuda', action='store_true', help='disable cuda')
+
+parser.add_argument(
+    '--data_parallel', action='store_true', help='use data parallel')
+
+parser.add_argument(
+    '--device_ids', default='[0, 1]', help='device ids')
 
 args = parser.parse_args()
 args.cuda = not args.disable_cuda and torch.cuda.is_available()
@@ -63,9 +72,17 @@ fields = [
 train_set = data.TabularDataset(args.train_file, 'csv', fields=fields)
 test_set = data.TabularDataset(args.test_file, 'csv', fields=fields)
 
+print(f'Loaded training data: {args.train_file}')
+print(f'Loaded testing data: {args.test_file}')
+
 TEXT.build_vocab(train_set, min_freq=5)
 LABEL.build_vocab(train_set)
 
+print(f'Number of training examples: {len(train_set.examples)}')
+print(f'Number of testing examples: {len(test_set.examples)}')
+
+print(f'Size of vocabulary: {len(TEXT.vocab)}')
+print(f'Number of labels: {len(LABEL.vocab)}')
 
 # Initiate criterion, classifier, and optimizer.
 classifier = CNNClassifier(vocab_size=len(TEXT.vocab),
@@ -74,6 +91,9 @@ classifier = CNNClassifier(vocab_size=len(TEXT.vocab),
                            filter_mapping=eval(args.filter_mapping))
 
 if args.cuda:
+    if args.data_parallel:
+        classifier = torch.nn.DataParallel(classifier,
+                                           device_ids=eval(args.device_ids))
     classifier.cuda()
 
 criterion = nn.NLLLoss()
@@ -124,7 +144,7 @@ def train(train_set, test_set, classifier, criterion, optimizer, num_epochs):
 
         progress, epoch = math.modf(iterator.epoch)
 
-        if iterator.iterations % 100 == 0:
+        if iterator.iterations % args.print_every == 0:
             print(f'epoch {int(epoch):2} |',
                   f'progress: {progress * 100:6.2f}% |',
                   f'loss: {loss.data[0]:6.4f} |')
