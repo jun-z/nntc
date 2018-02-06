@@ -31,6 +31,9 @@ parser.add_argument(
     '--batch_size', default=128, type=int, help='batch size')
 
 parser.add_argument(
+    '--learning_rate', default=1e-3, type=float, help='learning rate')
+
+parser.add_argument(
     '--print_every', default=100, type=int, help='print every n iterations')
 
 parser.add_argument(
@@ -38,6 +41,9 @@ parser.add_argument(
 
 parser.add_argument(
     '--filter_mapping', default='{1: 128, 2: 128}', help='mapping for filters')
+
+parser.add_argument(
+    '--dropout_prob', default=.5, type=float, help='dropout probability')
 
 parser.add_argument(
     '--disable_cuda', action='store_true', help='disable cuda')
@@ -88,7 +94,8 @@ print(f'Number of labels: {len(LABEL.vocab)}')
 classifier = CNNClassifier(vocab_size=len(TEXT.vocab),
                            label_size=len(LABEL.vocab),
                            embedding_dim=args.embedding_dim,
-                           filter_mapping=eval(args.filter_mapping))
+                           filter_mapping=eval(args.filter_mapping),
+                           dropout_prob=args.dropout_prob)
 
 if args.cuda:
     if args.data_parallel:
@@ -97,7 +104,7 @@ if args.cuda:
     classifier.cuda()
 
 criterion = nn.NLLLoss()
-optimizer = optim.Adam(classifier.parameters())
+optimizer = optim.Adam(classifier.parameters(), args.learning_rate)
 
 
 # Testing function.
