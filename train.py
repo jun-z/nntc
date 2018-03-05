@@ -49,10 +49,13 @@ parser.add_argument(
     '--disable_cuda', action='store_true', help='disable cuda')
 
 parser.add_argument(
+    '--device_id', default=0, type=int, help='id for cuda device')
+
+parser.add_argument(
     '--data_parallel', action='store_true', help='use data parallel')
 
 parser.add_argument(
-    '--device_ids', default='[0, 1]', help='device ids')
+    '--device_ids', default='[0, 1]', help='device ids for data parallel')
 
 args = parser.parse_args()
 args.cuda = not args.disable_cuda and torch.cuda.is_available()
@@ -101,7 +104,7 @@ if args.cuda:
     if args.data_parallel:
         classifier = torch.nn.DataParallel(classifier,
                                            device_ids=eval(args.device_ids))
-    classifier.cuda()
+    classifier.cuda(device=args.device_id)
 
 criterion = nn.NLLLoss()
 optimizer = optim.Adam(classifier.parameters(), args.learning_rate)
@@ -114,7 +117,7 @@ def test(test_set, classifier):
     iterator = data.BucketIterator(dataset=test_set,
                                    batch_size=args.batch_size,
                                    sort_key=lambda x: len(x.text),
-                                   device=None if args.cuda else -1,
+                                   device=args.device_id if args.cuda else -1,
                                    train=False)
 
     loss = 0
@@ -141,7 +144,7 @@ def train(train_set, test_set, classifier, criterion, optimizer, num_epochs):
     iterator = data.BucketIterator(dataset=train_set,
                                    batch_size=args.batch_size,
                                    sort_key=lambda x: len(x.text),
-                                   device=None if args.cuda else -1)
+                                   device=args.device_id if args.cuda else -1)
 
     for batch in iterator:
         optimizer.zero_grad()
