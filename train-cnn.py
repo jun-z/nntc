@@ -8,7 +8,7 @@ import torch.optim as optim
 
 from torchtext import data
 
-from models import CapsClassifier
+from models import CNNClassifier
 from utils import pad_shorties, calc_loss, predict
 
 
@@ -40,13 +40,7 @@ parser.add_argument(
     '--embedding_dim', default=300, type=int, help='embedding dimension')
 
 parser.add_argument(
-    '--hidden_dim', default=300, type=int, help='dimension of hidden layer')
-
-parser.add_argument(
     '--filter_mapping', default='{1: 128, 2: 128}', help='mapping for filters')
-
-parser.add_argument(
-    '--num_iterations', default=3, type=int, help='number of iterations for routing')
 
 parser.add_argument(
     '--dropout_prob', default=.5, type=float, help='dropout probability')
@@ -97,13 +91,11 @@ print(f'Size of vocabulary: {len(TEXT.vocab)}')
 print(f'Number of labels: {len(LABEL.vocab)}')
 
 # Initiate criterion, classifier, and optimizer.
-classifier = CapsClassifier(vocab_size=len(TEXT.vocab),
-                            label_size=len(LABEL.vocab),
-                            embedding_dim=args.embedding_dim,
-                            hidden_dim=args.hidden_dim,
-                            filter_mapping=eval(args.filter_mapping),
-                            num_iterations=args.num_iterations,
-                            dropout_prob=args.dropout_prob)
+classifier = CNNClassifier(vocab_size=len(TEXT.vocab),
+                           label_size=len(LABEL.vocab),
+                           embedding_dim=args.embedding_dim,
+                           filter_mapping=eval(args.filter_mapping),
+                           dropout_prob=args.dropout_prob)
 
 if args.cuda:
     if args.data_parallel:
