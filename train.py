@@ -40,6 +40,9 @@ parser.add_argument(
     '--embedding_dim', default=300, type=int, help='embedding dimension')
 
 parser.add_argument(
+    '--pretrained_embeddings', type=str, help='pretrained embeddings')
+
+parser.add_argument(
     '--filter_mapping', default='{1: 128, 2: 128}', help='mapping for filters')
 
 parser.add_argument(
@@ -84,7 +87,10 @@ test_set = data.TabularDataset(args.test_file, 'csv', fields=fields)
 print(f'Loaded training data: {args.train_file}')
 print(f'Loaded testing data: {args.test_file}')
 
-TEXT.build_vocab(train_set, min_freq=5)
+TEXT.build_vocab(train_set,
+                 min_freq=5,
+                 vectors=args.pretrained_embeddings)
+
 LABEL.build_vocab(train_set)
 
 print(f'Number of training examples: {len(train_set.examples)}')
@@ -98,6 +104,7 @@ classifier = CNNClassifier(vocab_size=len(TEXT.vocab),
                            label_size=len(LABEL.vocab),
                            embedding_dim=args.embedding_dim,
                            filter_mapping=eval(args.filter_mapping),
+                           pretrained_embeddings=TEXT.vocab.vectors,
                            dropout_prob=args.dropout_prob)
 
 if args.cuda:

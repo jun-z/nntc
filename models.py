@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.autograd as autograd
 
 
 class CNNClassifier(nn.Module):
@@ -8,11 +9,15 @@ class CNNClassifier(nn.Module):
                  label_size,
                  embedding_dim,
                  filter_mapping,
+                 pretrained_embeddings=None,
                  dropout_prob=.5):
 
         super(CNNClassifier, self).__init__()
 
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
+
+        if pretrained_embeddings is not None:
+            self.embedding.weight.data.copy_(pretrained_embeddings)
 
         self.convs = nn.ModuleList()
         for filter_size, num_filters in filter_mapping.items():
