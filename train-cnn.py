@@ -8,8 +8,8 @@ import torch.optim as optim
 
 from torchtext import data
 
-from models import LSTMAttentionClassifier
-from utils import calc_loss, predict
+from models import CNNClassifier
+from utils import pad_shorties, calc_loss, predict
 
 
 # Command-line arguments.
@@ -40,10 +40,13 @@ parser.add_argument(
     '--embedding_dim', default=300, type=int, help='embedding dimension')
 
 parser.add_argument(
-    '--hidden_dim', default=100, type=int, help='hidden layer dimension')
+    '--pretrained_embeddings', type=str, help='pretrained embeddings')
 
 parser.add_argument(
-    '--num_layers', default=1, type=int, help='number of layers')
+    '--filter_mapping', default='{1: 128, 2: 128}', help='mapping for filters')
+
+parser.add_argument(
+    '--dropout_prob', default=.5, type=float, help='dropout probability')
 
 parser.add_argument(
     '--disable_cuda', action='store_true', help='disable cuda')
@@ -62,11 +65,14 @@ args.cuda = not args.disable_cuda and torch.cuda.is_available()
 
 
 # Prepare training and testing data.
+MIN_LEN = max(eval(args.filter_mapping).keys())
+
 WORD = re.compile(args.token_regex)
 
 TEXT = data.Field(lower=True,
                   tokenize=WORD.findall,
-                  batch_first=True)
+                  batch_first=True,
+                  preprocessing=lambda x: pad_shorties(x, MIN_LEN))
 
 LABEL = data.Field(sequential=False, unk_token=None)
 
@@ -81,7 +87,10 @@ test_set = data.TabularDataset(args.test_file, 'csv', fields=fields)
 print(f'Loaded training data: {args.train_file}')
 print(f'Loaded testing data: {args.test_file}')
 
-TEXT.build_vocab(train_set, min_freq=5)
+TEXT.build_vocab(train_set,
+                 min_freq=5,
+                 vectors=args.pretrained_embeddings)
+
 LABEL.build_vocab(train_set)
 
 print(f'Number of training examples: {len(train_set.examples)}')
@@ -91,11 +100,12 @@ print(f'Size of vocabulary: {len(TEXT.vocab)}')
 print(f'Number of labels: {len(LABEL.vocab)}')
 
 # Initiate criterion, classifier, and optimizer.
-classifier = LSTMAttentionClassifier(vocab_size=len(TEXT.vocab),
-                                     label_size=len(LABEL.vocab),
-                                     embedding_dim=args.embedding_dim,
-                                     hidden_dim=args.hidden_dim,
-                                     num_layers=args.num_layers)
+classifier = CNNClassifier(vocab_size=len(TEXT.vocab),
+                           label_size=len(LABEL.vocab),
+                           embedding_dim=args.embedding_dim,
+                           filter_mapping=eval(args.filter_mapping),
+                           pretrained_embeddings=TEXT.vocab.vectors,
+                           dropout_prob=args.dropout_prob)
 
 if args.cuda:
     if args.data_parallel:
